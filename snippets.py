@@ -40,6 +40,24 @@ def get(name):
     logging.debug("Snippet retrieved successfully.")
     return message
 
+def catalog():
+    logging.info("query the keywords from the snippets table")
+    with connection, connection.cursor() as cursor:
+        command = "select * from snippets where hidden is false order by keyword"
+        cursor.execute(command)
+        rows = cursor.fetchall()
+        for row in rows:
+            print row[1]
+                    
+
+def search(searchString):
+    logging.info("search for a string within the snippet messages")
+    with connection, connection.cursor() as cursor:
+        command = "select * from snippets where message like %s and not hidden"
+        cursor.execute(command, ('%'+searchString+'%',))
+        rows = cursor.fetchall()
+    return rows
+
 def main():
     logging.info("Construting parser")
     parser = argparse.ArgumentParser(description="Store and retrieve snippets of the text")
@@ -50,16 +68,25 @@ def main():
     put_parser = subparsers.add_parser("put", help="Store a snippet")
     put_parser.add_argument("name", help="The name of the snippet")
     put_parser.add_argument("snippet", help="The snippet text")    
-    
+    put_parser.add_argument("--hide", type=int, choices=[0, 1], help="not show snippets in the catalog") 
     #Subparser for the get command
     logging.debug("Constructing get subparser")
     get_parser = subparsers.add_parser("get", help="Retrieve a snippet")
     get_parser.add_argument("name", help="The name of the snippet")
     
+    #Subparser for the catalog command
+    logging.debug("Constructing catalog subparser")
+    catalog_parser = subparsers.add_parser("catalog", help="look up keywords")
+     #Subparser for the search command
+    logging.debug("Constructing search subparser")
+    search_parser = subparsers.add_parser("search", help="search for a string within the snippet messages")
+    search_parser.add_argument("searchString", help="The string used to search withing messages")
+ 
     arguments = parser.parse_args()
 
     #Convert parsed arguments from Namespace to dictionary
     arguments = vars(arguments)
+    print arguments
     command = arguments.pop("command")
 
     if command == "put":
@@ -68,6 +95,12 @@ def main():
     elif command == "get":
         snippet = get(**arguments)
         print ("Retrived snipped: {!r}".format(snippet))
+    elif command == "catalog":
+        catalog()
+        print ("The keywords stored in snippet")
+    elif command == "search":
+        searchM = search(**arguments)
+        print ("The messages containing the string are {}".format(searchM))  
 
 if __name__=="__main__":
     main()
