@@ -9,13 +9,17 @@ logging.debug("Connecting to PostgreSQL")
 connection = psycopg2.connect("dbname='snippets' user='action' host='localhost'")
 logging.debug("Database connection established.")
 
-def put(name, snippet):
+def put(hide, name, snippet):
     """Store a snippet with an associated name."""
     logging.info("Storing snippet {!r}: {!r}".format(name, snippet))
     with connection, connection.cursor() as cursor:
         try:
             command = "insert into snippets values (%s, %s)"
             cursor.execute(command, (name, snippet))
+            if hide == 1:
+                command = "update snippets set hidden = true where keyword = %s"
+                cursor.execute(command, (name,))
+                
         except psycopg2.IntegrityError as e:
             connection.rollback()
             command = "update snippets set message=%s where keyword=%s"
@@ -47,7 +51,7 @@ def catalog():
         cursor.execute(command)
         rows = cursor.fetchall()
         for row in rows:
-            print row[1]
+            print row[0]
                     
 
 def search(searchString):
@@ -56,7 +60,10 @@ def search(searchString):
         command = "select * from snippets where message like %s and not hidden"
         cursor.execute(command, ('%'+searchString+'%',))
         rows = cursor.fetchall()
-    return rows
+    searchedRows = []
+    for row in rows:
+        searchedRows.append(row[1])
+    return searchedRows
 
 def main():
     logging.info("Construting parser")
@@ -83,10 +90,8 @@ def main():
     search_parser.add_argument("searchString", help="The string used to search withing messages")
  
     arguments = parser.parse_args()
-
     #Convert parsed arguments from Namespace to dictionary
     arguments = vars(arguments)
-    print arguments
     command = arguments.pop("command")
 
     if command == "put":
